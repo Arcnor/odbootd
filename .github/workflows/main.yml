@@ -77,3 +77,56 @@ jobs:
         path: |
           build/odboot-client
 
+  build-win:
+    name: Build odbootd (Windows)
+    runs-on: windows-2019
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: msys2/setup-msys2@v2
+      with:
+        update: false
+        msystem: mingw64
+        install: >-
+          base-devel
+          git
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-libusb
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libini'
+        path: 'libini'
+    - name: Configure, build and install libini
+      run: |
+        cmake -Bbuild -G "MSYS Makefiles"
+        cmake --build build --config Release --parallel
+        cmake --install build --prefix /usr
+      working-directory: libini
+    - uses: actions/upload-artifact@v2
+      with:
+        name: libini-win
+        path: |
+          libini/build
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libopk'
+        path: 'libopk'
+    - name: Configure, build and install libopk
+      run: |
+        PKG_CONFIG_PATH=/usr/lib/pkgconfig cmake -Bbuild -G "MSYS Makefiles"
+        cmake --build build --config Release --target opk
+        cmake --install build --prefix /usr
+      working-directory: libopk
+    - uses: actions/checkout@v2
+    - name: Configure, build and package odbootd
+      run: |
+        PKG_CONFIG_PATH=/usr/lib/pkgconfig cmake -DWITH_ODBOOTD=OFF -Bbuild -G "MSYS Makefiles"
+        cmake --build build --config Release
+    - uses: actions/upload-artifact@v2
+      with:
+        name: odbootd-windows
+        path: |
+          build/odboot-client.exe
+
