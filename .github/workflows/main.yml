@@ -1,0 +1,42 @@
+name: odbootd
+
+on: [push]
+
+jobs:
+  build-linux:
+    name: Build odbootd
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libini'
+        path: 'libini'
+    - name: Configure, build and install libini
+      run: |
+        cmake -Bbuild
+        cmake --build build --parallel
+        sudo cmake --install build
+      working-directory: libini
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libopk'
+        path: 'libopk'
+    - name: Configure, build and install libopk
+      run: |
+        cmake -Bbuild
+        cmake --build build --parallel
+        sudo cmake --install build
+      working-directory: libopk
+    - uses: actions/checkout@v2
+    - name: Install required packages
+      run: sudo apt-get install -y libusb-1.0.0-dev
+    - name: Configure, build and package odbootd
+      run: |
+        cmake -Bbuild
+        cmake --build build --parallel
+    - uses: actions/upload-artifact@v2
+      with:
+        name: odbootd-linux
+        path: |
+          build/odboot-client
+
