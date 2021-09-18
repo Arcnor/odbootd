@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build-linux:
-    name: Build odbootd
+    name: Build odbootd (Linux)
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -37,6 +37,43 @@ jobs:
     - uses: actions/upload-artifact@v2
       with:
         name: odbootd-linux
+        path: |
+          build/odboot-client
+
+  build-mac:
+    name: Build odbootd (macOS)
+    runs-on: macos-10.15
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libini'
+        path: 'libini'
+    - name: Configure, build and install libini
+      run: |
+        cmake -Bbuild
+        cmake --build build --parallel
+        sudo cmake --install build
+      working-directory: libini
+    - uses: actions/checkout@v2
+      with:
+        repository: 'pcercuei/libopk'
+        path: 'libopk'
+    - name: Configure, build and install libopk
+      run: |
+        cmake -Bbuild
+        cmake --build build --target opk --parallel
+        sudo cmake --install build
+      working-directory: libopk
+    - uses: actions/checkout@v2
+    - name: Install required packages
+      run: brew install libusb
+    - name: Configure, build and package odbootd
+      run: |
+        cmake -DWITH_ODBOOTD=OFF -Bbuild
+        cmake --build build --parallel
+    - uses: actions/upload-artifact@v2
+      with:
+        name: odbootd-macos
         path: |
           build/odboot-client
 
