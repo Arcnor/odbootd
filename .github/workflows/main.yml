@@ -3,43 +3,6 @@ name: odbootd
 on: [push]
 
 jobs:
-  build-linux:
-    name: Build odbootd (Linux)
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        repository: 'pcercuei/libini'
-        path: 'libini'
-    - name: Configure, build and install libini
-      run: |
-        cmake -Bbuild
-        cmake --build build --parallel
-        sudo cmake --install build
-      working-directory: libini
-    - uses: actions/checkout@v2
-      with:
-        repository: 'pcercuei/libopk'
-        path: 'libopk'
-    - name: Configure, build and install libopk
-      run: |
-        cmake -Bbuild
-        cmake --build build --parallel
-        sudo cmake --install build
-      working-directory: libopk
-    - uses: actions/checkout@v2
-    - name: Install required packages
-      run: sudo apt-get install -y libusb-1.0.0-dev
-    - name: Configure, build and package odbootd
-      run: |
-        cmake -Bbuild
-        cmake --build build --parallel
-    - uses: actions/upload-artifact@v2
-      with:
-        name: odbootd-linux
-        path: |
-          build/odboot-client
-
   build-mac:
     name: Build odbootd (macOS)
     runs-on: macos-10.15
@@ -65,68 +28,27 @@ jobs:
         sudo cmake --install build
       working-directory: libopk
     - uses: actions/checkout@v2
+      with:
+        path: 'odbootd'
     - name: Install required packages
       run: brew install libusb
     - name: Configure, build and package odbootd
       run: |
         cmake -DWITH_ODBOOTD=OFF -Bbuild
         cmake --build build --parallel
+      working-directory: odbootd
+    - name: copy libraries
+      run: |
+        mkdir output
+        cp libini/build/*.dylib output/
+        cp libopk/build/*.dylib output/
+        cp odbootd/build/odboot-client output/
+        echo "If you have SIP activated and cannot run \`odboot-client\`, execute \`xattr -r -d com.apple.quarantine *\` on the folder with all the files" >> output/README.md
+        install_name_tool -add_rpath @executable_path/. output/odboot-client
+        cd output && tar -cvf odboot-client.tar *
     - uses: actions/upload-artifact@v2
       with:
         name: odbootd-macos
         path: |
-          build/odboot-client
-
-  build-win:
-    name: Build odbootd (Windows)
-    runs-on: windows-2019
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-    - uses: msys2/setup-msys2@v2
-      with:
-        update: false
-        msystem: mingw64
-        install: >-
-          base-devel
-          git
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-libusb
-    - uses: actions/checkout@v2
-      with:
-        repository: 'pcercuei/libini'
-        path: 'libini'
-    - name: Configure, build and install libini
-      run: |
-        cmake -Bbuild -G "MSYS Makefiles"
-        cmake --build build --config Release --parallel
-        cmake --install build --prefix /usr
-      working-directory: libini
-    - uses: actions/upload-artifact@v2
-      with:
-        name: libini-win
-        path: |
-          libini/build
-    - uses: actions/checkout@v2
-      with:
-        repository: 'pcercuei/libopk'
-        path: 'libopk'
-    - name: Configure, build and install libopk
-      run: |
-        PKG_CONFIG_PATH=/usr/lib/pkgconfig cmake -Bbuild -G "MSYS Makefiles"
-        cmake --build build --config Release --target opk
-        cmake --install build --prefix /usr
-      working-directory: libopk
-    - uses: actions/checkout@v2
-    - name: Configure, build and package odbootd
-      run: |
-        PKG_CONFIG_PATH=/usr/lib/pkgconfig cmake -DWITH_ODBOOTD=OFF -Bbuild -G "MSYS Makefiles"
-        cmake --build build --config Release
-    - uses: actions/upload-artifact@v2
-      with:
-        name: odbootd-windows
-        path: |
-          build/odboot-client.exe
+          output/odboot-client.tar
 
